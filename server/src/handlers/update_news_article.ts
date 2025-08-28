@@ -1,17 +1,51 @@
+import { db } from '../db';
+import { newsArticlesTable } from '../db/schema';
 import { type UpdateNewsArticleInput, type NewsArticle } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updateNewsArticle(input: UpdateNewsArticleInput): Promise<NewsArticle> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating an existing news article in the database.
-    // Should validate input, update the article in newsArticlesTable, and return the updated article.
-    return Promise.resolve({
-        id: input.id,
-        title: input.title || 'Placeholder Title',
-        content: input.content || 'Placeholder content',
-        summary: input.summary || null,
-        author: input.author || 'Placeholder Author',
-        published_at: input.published_at || new Date(),
-        created_at: new Date(),
-        updated_at: new Date()
-    } as NewsArticle);
-}
+export const updateNewsArticle = async (input: UpdateNewsArticleInput): Promise<NewsArticle> => {
+  try {
+    // First check if the article exists
+    const existingArticle = await db.select()
+      .from(newsArticlesTable)
+      .where(eq(newsArticlesTable.id, input.id))
+      .execute();
+
+    if (existingArticle.length === 0) {
+      throw new Error(`News article with id ${input.id} not found`);
+    }
+
+    // Build the update object with only the fields that are provided
+    const updateData: any = {
+      updated_at: new Date()
+    };
+
+    if (input.title !== undefined) {
+      updateData['title'] = input.title;
+    }
+    if (input.content !== undefined) {
+      updateData['content'] = input.content;
+    }
+    if (input.summary !== undefined) {
+      updateData['summary'] = input.summary;
+    }
+    if (input.author !== undefined) {
+      updateData['author'] = input.author;
+    }
+    if (input.published_at !== undefined) {
+      updateData['published_at'] = input.published_at;
+    }
+
+    // Update the article and return the updated record
+    const result = await db.update(newsArticlesTable)
+      .set(updateData)
+      .where(eq(newsArticlesTable.id, input.id))
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('News article update failed:', error);
+    throw error;
+  }
+};

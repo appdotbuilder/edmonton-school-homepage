@@ -1,17 +1,51 @@
+import { db } from '../db';
+import { eventsTable } from '../db/schema';
 import { type UpdateEventInput, type Event } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updateEvent(input: UpdateEventInput): Promise<Event> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating an existing school event in the database.
-    // Should validate input, update the event in eventsTable, and return the updated event.
-    return Promise.resolve({
-        id: input.id,
-        title: input.title || 'Placeholder Event',
-        description: input.description || 'Placeholder description',
-        event_date: input.event_date || new Date(),
-        event_time: input.event_time || null,
-        location: input.location || null,
-        created_at: new Date(),
-        updated_at: new Date()
-    } as Event);
-}
+export const updateEvent = async (input: UpdateEventInput): Promise<Event> => {
+  try {
+    // First, check if the event exists
+    const existingEvent = await db.select()
+      .from(eventsTable)
+      .where(eq(eventsTable.id, input.id))
+      .execute();
+
+    if (existingEvent.length === 0) {
+      throw new Error(`Event with id ${input.id} not found`);
+    }
+
+    // Build update object with only provided fields
+    const updateData: Partial<typeof eventsTable.$inferInsert> = {
+      updated_at: new Date()
+    };
+
+    if (input.title !== undefined) {
+      updateData.title = input.title;
+    }
+    if (input.description !== undefined) {
+      updateData.description = input.description;
+    }
+    if (input.event_date !== undefined) {
+      updateData.event_date = input.event_date;
+    }
+    if (input.event_time !== undefined) {
+      updateData.event_time = input.event_time;
+    }
+    if (input.location !== undefined) {
+      updateData.location = input.location;
+    }
+
+    // Update the event
+    const result = await db.update(eventsTable)
+      .set(updateData)
+      .where(eq(eventsTable.id, input.id))
+      .returning()
+      .execute();
+
+    return result[0];
+  } catch (error) {
+    console.error('Event update failed:', error);
+    throw error;
+  }
+};

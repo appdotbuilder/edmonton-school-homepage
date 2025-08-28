@@ -1,9 +1,25 @@
+import { db } from '../db';
+import { eventsTable } from '../db/schema';
 import { type Event } from '../schema';
+import { gte, asc } from 'drizzle-orm';
 
-export async function getUpcomingEvents(limit: number = 10): Promise<Event[]> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is fetching upcoming school events from the database.
-    // Should query eventsTable, filter by event_date >= current date, order by event_date ASC, 
-    // limit results, and return events.
-    return Promise.resolve([]);
-}
+export const getUpcomingEvents = async (limit: number = 10): Promise<Event[]> => {
+  try {
+    // Get current date at start of day for consistent filtering
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    // Query upcoming events
+    const results = await db.select()
+      .from(eventsTable)
+      .where(gte(eventsTable.event_date, currentDate))
+      .orderBy(asc(eventsTable.event_date))
+      .limit(limit)
+      .execute();
+
+    return results;
+  } catch (error) {
+    console.error('Failed to fetch upcoming events:', error);
+    throw error;
+  }
+};
